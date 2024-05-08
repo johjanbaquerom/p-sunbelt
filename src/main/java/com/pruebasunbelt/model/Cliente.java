@@ -10,16 +10,10 @@ import lombok.NoArgsConstructor;
 public class Cliente {
 
     private String primerNombre;
-
     private String segundoNombre;
-
     private String primerApellido;
-
     private String segundoApellido;
-
     private String telefono;
-
     private String direccion;
-
-    private String ciudadResidencia;;
+    private String ciudadResidencia;
 }

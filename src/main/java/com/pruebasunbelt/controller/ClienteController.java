@@ -1,7 +1,10 @@
 package com.pruebasunbelt.controller;
 
+import com.pruebasunbelt.exception.ClienteNotFoundException;
 import com.pruebasunbelt.model.Cliente;
 import com.pruebasunbelt.model.ConsultaClienteRequest;
+import com.pruebasunbelt.service.ClienteService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,28 +14,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class ClienteController {
 
+    private final ClienteService clienteService;
+
+    @Autowired
+    public ClienteController(ClienteService clienteService) {
+        this.clienteService = clienteService;
+    }
+
     @PostMapping("/consultarCliente")
-    public ResponseEntity<?> consultarCliente(@RequestBody ConsultaClienteRequest request) {
-        if (request.getTipoDocumento() == null || request.getNumeroDocumento() == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tipo y número de documento son obligatorios");
+    public ResponseEntity<Object> consultarCliente(@RequestBody ConsultaClienteRequest request) {
+        try {
+            Cliente clienteConsultado = clienteService.consultarCliente(request.getTipoDocumento(), request.getNumeroDocumento());
+            return new ResponseEntity<>(clienteConsultado, HttpStatus.OK);
+        } catch (ClienteNotFoundException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>("Error interno del servidor.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        if (!"C".equals(request.getTipoDocumento()) && !"P".equals(request.getTipoDocumento())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Tipo de documento no válido");
-        }
-        if (!"10121314".equals(request.getNumeroDocumento())) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Cliente no encontrado");
-        }
-
-        Cliente cliente = new Cliente();
-        cliente.setPrimerNombre("Juan");
-        cliente.setSegundoNombre("Pablo");
-        cliente.setPrimerApellido("Gómez");
-        cliente.setSegundoApellido("López");
-        cliente.setTelefono("1234567890");
-        cliente.setDireccion("Calle 123");
-        cliente.setCiudadResidencia("Bogotá");
-
-        return ResponseEntity.status(HttpStatus.OK).body(cliente);
     }
 }
 

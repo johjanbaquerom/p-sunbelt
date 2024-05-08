@@ -1,12 +1,21 @@
 package com.pruebasunbelt;
 
 
+import com.pruebasunbelt.controller.ClienteController;
+import com.pruebasunbelt.exception.ClienteNotFoundException;
+import com.pruebasunbelt.model.Cliente;
+import com.pruebasunbelt.model.ConsultaClienteRequest;
+import com.pruebasunbelt.service.ClienteService;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultMatcher;
@@ -14,58 +23,45 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import static net.bytebuddy.matcher.ElementMatchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 public class ClienteControllerTests {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Mock
+    private ClienteService clienteService;
+
+    @InjectMocks
+    private ClienteController clienteController;
 
     @Test
-    public void testConsultarClienteExitoso() throws Exception {
-        String requestBody = "{\"tipoDocumento\": \"C\", \"numeroDocumento\": \"10121314\"}";
-        String clienteResponse = "{\"primerNombre\": \"Juan\", \"segundoNombre\": \"Pablo\", \"primerApellido\": " +
-                "\"Gómez\", \"segundoApellido\": \"López\", \"telefono\": \"1234567890\", " +
-                "\"direccion\": \"Calle 123\", \"ciudad\": \"Bogotá\"}";
+    void consultarCliente_ClienteExistente_DebeRetornarCliente() throws ClienteNotFoundException {
+        ConsultaClienteRequest request = new ConsultaClienteRequest();
+        request.setTipoDocumento("C");
+        request.setNumeroDocumento("10121314");
 
-        MvcResult result = mockMvc.perform(MockMvcRequestBuilders.post("/consultarCliente")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andReturn();
+        Cliente clienteMock = new Cliente();
+        clienteMock.setPrimerNombre("Juan");
+        clienteMock.setPrimerApellido("Perez");
+        when(clienteService.consultarCliente(request.getTipoDocumento(), request.getNumeroDocumento())).thenReturn(clienteMock);
 
-        mockMvc.perform(MockMvcRequestBuilders.post("/consultarCliente")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.primerNombre").value("Juan"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.segundoNombre").value("Pablo"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.primerApellido").value("Gómez"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.segundoApellido").value("López"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.telefono").value("1234567890"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.direccion").value("Calle 123"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.ciudad").value(Matchers.equalToIgnoringCase("Bogotá")));
+        ResponseEntity<Object> responseEntity = clienteController.consultarCliente(request);
+        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+        assertEquals(clienteMock, responseEntity.getBody());
     }
 
     @Test
-    public void testConsultarClienteBadRequest() throws Exception {
-        String requestBody = "{\"numeroDocumento\": \"10121314\"}";
-        mockMvc.perform(MockMvcRequestBuilders.post("/consultarCliente")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(MockMvcResultMatchers.status().isBadRequest());
+    void consultarCliente_ClienteNoExistente_DebeRetornarNotFound() throws ClienteNotFoundException {
+        ConsultaClienteRequest request = new ConsultaClienteRequest();
+        request.setTipoDocumento("C");
+        request.setNumeroDocumento("12345678");
+        when(clienteService.consultarCliente(request.getTipoDocumento(), request.getNumeroDocumento()))
+                .thenThrow(ClienteNotFoundException.class);
+
+        ResponseEntity<Object> responseEntity = clienteController.consultarCliente(request);
+        assertEquals(HttpStatus.NOT_FOUND, responseEntity.getStatusCode());
     }
-
-    @Test
-    public void testConsultarClienteTipoDocumentoInvalido() throws Exception {
-        String requestBody = "{\"tipoDocumento\": \"X\", \"numeroDocumento\": \"10121314\"}";
-
-        mockMvc.perform(MockMvcRequestBuilders.post("/consultarCliente")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(MockMvcResultMatchers.status().isBadRequest());
-    }
-
 }
